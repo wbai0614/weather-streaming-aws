@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weather Stream Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="wrap">
+    <div>
+      <h1>Weather Stream Dashboard</h1>
+      <p class="sub">Live snapshot from S3 + CloudFront</p>
+    </div>
+
+    <div class="controls">
+      <label>
+        City
+        <select id="citySelect"></select>
+      </label>
+      <button id="refreshBtn" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="kpis">
+      <div class="card">
+        <div class="label">Temperature</div>
+        <div class="value" id="kpiTemp">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Humidity</div>
+        <div class="value" id="kpiHumidity">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Wind</div>
+        <div class="value" id="kpiWind">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Condition</div>
+        <div class="value" id="kpiCond">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Last Updated (UTC)</div>
+        <div class="value" id="kpiUpdated">—</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHead">
+        <h2>Current Conditions</h2>
+        <div class="muted" id="generatedUtc">—</div>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>City</th>
+              <th>Temp (°C)</th>
+              <th>Feels Like (°C)</th>
+              <th>Humidity (%)</th>
+              <th>Wind (m/s)</th>
+              <th>Pressure (hPa)</th>
+              <th>Condition</th>
+              <th>Observed (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="wrap foot">
+      <span class="muted">Source: OpenWeatherMap → Lambda → SQS → S3 → CloudFront</span>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

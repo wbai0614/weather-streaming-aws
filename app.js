@@ -1,9 +1,8 @@
-// ===== Configuration =====
-const LATEST_URL = "/latest.json"; // CloudFront origin path = /public
-const AUTO_REFRESH_MS = 120000;    // 2 minutes
-const STALE_MINUTES = 15;          // warn if generated_utc older than this
+// public/app.js
+const LATEST_URL = "/latest.json";
+const AUTO_REFRESH_MS = 120000;
+const STALE_MINUTES = 15;
 
-// ===== DOM Elements =====
 const els = {
   citySelect: document.getElementById("citySelect"),
   refreshBtn: document.getElementById("refreshBtn"),
@@ -16,6 +15,10 @@ const els = {
 
   kpiColdest: document.getElementById("kpiColdest"),
   kpiWindiest: document.getElementById("kpiWindiest"),
+
+  // NEW: cards so we can hide them
+  cardColdest: document.getElementById("cardColdest"),
+  cardWindiest: document.getElementById("cardWindiest"),
 
   kpiTempDelta: document.getElementById("kpiTempDelta"),
   kpiHumidityDelta: document.getElementById("kpiHumidityDelta"),
@@ -32,9 +35,8 @@ const els = {
 };
 
 let latest = null;
-let prevSnapshot = null; // previous latest.json for trend deltas
+let prevSnapshot = null;
 
-// ===== Helpers =====
 function fmt(n, digits = 1) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return Number(n).toFixed(digits);
@@ -109,7 +111,6 @@ function deltaText(curr, prev, unit, digits = 1) {
   return `${arrow} ${fmt(abs, digits)} ${unit} vs last refresh`;
 }
 
-// ===== Render =====
 function renderCityOptions(cities) {
   const current = els.citySelect.value;
 
@@ -130,7 +131,7 @@ function renderCityOptions(cities) {
   els.citySelect.value = current || "__ALL__";
 }
 
-function getPrevForSelection(selected, cities) {
+function getPrevForSelection(selected) {
   if (!prevSnapshot || !Array.isArray(prevSnapshot.cities)) return null;
 
   const prevCities = prevSnapshot.cities;
@@ -161,15 +162,12 @@ function render() {
   const selected = els.citySelect.value;
   const filtered = selected === "__ALL__" ? cities : cities.filter(c => c.city === selected);
 
-  // Stale warning uses pipeline timestamp
   setStaleWarning(latest.generated_utc);
 
-  // KPIs (avg for all, exact for one city)
   const tempAvg = avg(filtered, "temp_c");
   const humAvg = avg(filtered, "humidity");
   const windAvg = avg(filtered, "wind_mps");
 
-  // Temperature value as a colored badge
   els.kpiTemp.innerHTML = `<span class="badge ${tempClass(tempAvg)}">${fmt(tempAvg, 1)} °C</span>`;
   els.kpiHumidity.textContent = `${fmt(humAvg, 0)} %`;
   els.kpiWind.textContent = `${fmt(windAvg, 1)} m/s`;
@@ -182,8 +180,11 @@ function render() {
     els.kpiUpdated.textContent = latest.generated_utc || "—";
   }
 
-  // Coldest / Windiest only meaningful for all-cities
+  // Hide/show Coldest/Windiest cards
   if (selected === "__ALL__" && cities.length > 0) {
+    els.cardColdest.classList.remove("hidden");
+    els.cardWindiest.classList.remove("hidden");
+
     const coldest = minBy(cities, "temp_c");
     const windiest = maxBy(cities, "wind_mps");
 
@@ -195,17 +196,15 @@ function render() {
       ? `${windiest.city} (${fmt(windiest.wind_mps, 1)} m/s)`
       : "—";
   } else {
-    els.kpiColdest.textContent = "—";
-    els.kpiWindiest.textContent = "—";
+    els.cardColdest.classList.add("hidden");
+    els.cardWindiest.classList.add("hidden");
   }
 
-  // Trend deltas vs previous refresh
-  const prevForSel = getPrevForSelection(selected, cities);
+  const prevForSel = getPrevForSelection(selected);
   els.kpiTempDelta.textContent = prevForSel ? deltaText(tempAvg, prevForSel.temp_c, "°C", 1) : "—";
   els.kpiHumidityDelta.textContent = prevForSel ? deltaText(humAvg, prevForSel.humidity, "%", 0) : "—";
   els.kpiWindDelta.textContent = prevForSel ? deltaText(windAvg, prevForSel.wind_mps, "m/s", 1) : "—";
 
-  // Table
   els.generatedUtc.textContent = "generated_utc: " + (latest.generated_utc || "—");
   els.rows.innerHTML = "";
 
@@ -227,18 +226,14 @@ function render() {
   }
 }
 
-// ===== Load =====
 async function loadLatest() {
   try {
     setStatus("loading", "Loading…");
-
     const url = `${LATEST_URL}?t=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to fetch latest.json (${res.status})`);
 
-    // Save previous snapshot before overwriting
     prevSnapshot = latest;
-
     latest = await res.json();
     render();
 
@@ -249,10 +244,8 @@ async function loadLatest() {
   }
 }
 
-// ===== Events =====
 els.refreshBtn.addEventListener("click", loadLatest);
 els.citySelect.addEventListener("change", render);
 
-// ===== Start =====
 loadLatest();
 setInterval(loadLatest, AUTO_REFRESH_MS);

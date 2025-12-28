@@ -4,63 +4,140 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Weather Stream Dashboard</title>
+  <meta name="description" content="Live weather snapshot from AWS S3 + CloudFront" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="wrap">
-    <div>
-      <h1>Weather Stream Dashboard</h1>
-      <p class="sub">Live snapshot from S3 + CloudFront</p>
+  <div class="bg"></div>
+
+  <header class="wrap header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">☁️</div>
+      <div>
+        <h1>Weather Stream Dashboard</h1>
+        <p class="sub">Live snapshot from S3 + CloudFront</p>
+      </div>
     </div>
 
     <div class="controls">
-      <label>
-        City
-        <select id="citySelect"></select>
+      <label class="field">
+        <span class="fieldLabel">City</span>
+        <select id="citySelect" aria-label="Select city"></select>
       </label>
-      <button id="refreshBtn" type="button">Refresh</button>
+
+      <button id="refreshBtn" class="btn" type="button" title="Refresh now">
+        <span class="btnIcon" aria-hidden="true">⟳</span>
+        Refresh
+      </button>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="kpis">
-      <div class="card">
-        <div class="label">Temperature</div>
-        <div class="value" id="kpiTemp">—</div>
+    <section id="staleBanner" class="banner hidden" role="status" aria-live="polite">
+      <span class="bannerIcon" aria-hidden="true">⚠️</span>
+      <span id="staleText">Data may be stale.</span>
+    </section>
+
+    <section class="kpis" aria-label="KPIs">
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">🌡️</div>
+          <div class="kpiMeta">
+            <div class="label">Temperature</div>
+            <div class="value" id="kpiTemp">—</div>
+            <div class="delta" id="kpiTempDelta">—</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="label">Humidity</div>
-        <div class="value" id="kpiHumidity">—</div>
+
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">💧</div>
+          <div class="kpiMeta">
+            <div class="label">Humidity</div>
+            <div class="value" id="kpiHumidity">—</div>
+            <div class="delta" id="kpiHumidityDelta">—</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="label">Wind</div>
-        <div class="value" id="kpiWind">—</div>
+
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">🌬️</div>
+          <div class="kpiMeta">
+            <div class="label">Wind</div>
+            <div class="value" id="kpiWind">—</div>
+            <div class="delta" id="kpiWindDelta">—</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="label">Condition</div>
-        <div class="value" id="kpiCond">—</div>
+
+      <!-- NEW: Coldest city -->
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">❄️</div>
+          <div class="kpiMeta">
+            <div class="label">Coldest City</div>
+            <div class="value small" id="kpiColdest">—</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="label">Last Updated (UTC)</div>
-        <div class="value" id="kpiUpdated">—</div>
+
+      <!-- NEW: Windiest city -->
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">💨</div>
+          <div class="kpiMeta">
+            <div class="label">Windiest City</div>
+            <div class="value small" id="kpiWindiest">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">⛅</div>
+          <div class="kpiMeta">
+            <div class="label">Condition</div>
+            <div class="value small" id="kpiCond">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpiTop">
+          <div class="kpiIcon" aria-hidden="true">🕒</div>
+          <div class="kpiMeta">
+            <div class="label">Last Updated (UTC)</div>
+            <div class="value small" id="kpiUpdated">—</div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="panel">
+    <section class="card panel">
       <div class="panelHead">
-        <h2>Current Conditions</h2>
-        <div class="muted" id="generatedUtc">—</div>
+        <div>
+          <h2>Current Conditions</h2>
+          <div class="muted" id="generatedUtc">—</div>
+        </div>
+
+        <div id="statusPill" class="pill" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="statusText">Loading…</span>
+        </div>
       </div>
+
       <div class="tableWrap">
-        <table>
+        <table class="table" role="table">
           <thead>
             <tr>
               <th>City</th>
-              <th>Temp (°C)</th>
-              <th>Feels Like (°C)</th>
-              <th>Humidity (%)</th>
-              <th>Wind (m/s)</th>
-              <th>Pressure (hPa)</th>
+              <th class="num">Temp</th>
+              <th class="num">Feels</th>
+              <th class="num">Humidity</th>
+              <th class="num">Wind</th>
+              <th class="num">Pressure</th>
               <th>Condition</th>
               <th>Observed (UTC)</th>
             </tr>
@@ -68,10 +145,14 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
+
+      <div class="panelFoot">
+        <span class="muted">Source: OpenWeatherMap → Lambda → SQS → S3 → CloudFront</span>
+      </div>
     </section>
 
     <footer class="wrap foot">
-      <span class="muted">Source: OpenWeatherMap → Lambda → SQS → S3 → CloudFront</span>
+      <span class="muted">© Weather Stream • Serverless AWS data pipeline</span>
     </footer>
   </main>
 
